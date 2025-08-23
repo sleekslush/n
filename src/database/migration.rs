@@ -1,22 +1,20 @@
-use crate::database::connection::DatabaseConnection;
+use rusqlite::Connection;
 
-pub fn migrate<'a>(connection: &'a mut DatabaseConnection) {
-    let user_version = connection
-        .connection
-        .query_row("PRAGMA user_version", [], |row| row.get(0))
-        .unwrap_or(0);
-
-    if user_version >= MIGRATIONS.len() {
+pub fn migrate<'a>(connection: &'a mut Connection) {
+    let migration_version = get_migration_version(connection);
+    if migration_version >= MIGRATIONS.len() {
         return;
     }
 
-    let tx = connection.connection.transaction().unwrap();
+    let tx = connection.transaction().unwrap();
 
-    for group in MIGRATIONS.iter().rev().skip(user_version) {
-        for &migration in group.iter() {
-            tx.execute(migration, ()).unwrap();
-        }
-    }
+    MIGRATIONS
+        .iter()
+        .rev()
+        .skip(migration_version)
+        .for_each(|sql| {
+            tx.execute_batch(sql).unwrap();
+        });
 
     tx.execute(&format!("PRAGMA user_version = {}", MIGRATIONS.len()), [])
         .unwrap();
@@ -24,28 +22,11 @@ pub fn migrate<'a>(connection: &'a mut DatabaseConnection) {
     tx.commit().unwrap();
 }
 
-// Groups of migrations execute from bottom to top, and then top down within each group
-const MIGRATIONS: &[&[&str]] = &[&[
-    r"CREATE TABLE notes (
-        id INTEGER PRIMARY KEY,
-        uuid TEXT NOT NULL,
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL,
-        note TEXT NOT NULL
-    )",
-    r"CREATE VIRTUAL TABLE notes_ft USING fts5(
-        note,
-        content='notes',
-        content_rowid='id'
-    )",
-    r"CREATE TRIGGER notes_ai AFTER INSERT ON notes BEGIN
-        INSERT INTO notes_ft(rowid, note) VALUES (new.id, new.note);
-    END",
-    r"CREATE TRIGGER notes_ad AFTER DELETE ON notes BEGIN
-        INSERT INTO notes_ft(notes_ft, rowid, note) VALUES('delete', old.id, old.note);
-    END",
-    r"CREATE TRIGGER notes_au AFTER UPDATE ON notes BEGIN
-        INSERT INTO notes_ft(notes_ft, rowid, note) VALUES('delete', old.id, old.note);
-        INSERT INTO notes_ft(rowid, note) VALUES (new.id, new.note);
-    END",
-]];
+pub fn get_migration_version(connection: &Connection) -> usize {
+    connection
+        .query_row("PRAGMA user_version", [], |row| row.get(0))
+        .unwrap_or(0)
+}
+
+// Groups of migrations execute from bottom to top
+const MIGRATIONS: &[&str] = &[include_str!("migrations/001-initial.sql")];

@@ -1,36 +1,77 @@
-use crate::database::{connection::DatabaseConnection, models::Note};
+use chrono::Utc;
+use rusqlite::{Connection, Result, params, params_from_iter};
+use uuid::Uuid;
+
+use crate::database::{
+    models::Note,
+    types::{SqliteUTC, SqliteUuid},
+};
 
 pub struct NoteRepository<'a> {
-    connection: &'a DatabaseConnection<'a>,
+    connection: &'a Connection,
 }
 
 impl<'a> NoteRepository<'a> {
-    pub fn new(connection: &'a DatabaseConnection<'a>) -> Self {
+    pub fn new(connection: &'a Connection) -> Self {
         Self { connection }
     }
 
-    pub fn create_note(&self, note: &Note) {
+    pub fn create_note(&self, note: String) -> Result<Note> {
+        let uuid = SqliteUuid(Uuid::new_v4());
+        let now = SqliteUTC(Utc::now());
+
+        self.connection.query_row(
+            "
+                    INSERT INTO notes (uuid, created_at, updated_at, note)
+                    VALUES (?1, ?2, ?3, ?4)
+                    RETURNING id, uuid, created_at, updated_at, note
+                ",
+            params![uuid, now, now, note],
+            |row| note_from_row(row),
+        )
+    }
+
+    pub fn get_notes_by_ids(&self, note_ids: &[i32]) -> Result<Vec<Note>> {
+        if note_ids.is_empty() {
+            return Ok(vec![]);
+        }
+
         self.connection
-            .connection
-            .execute(
-                r"INSERT INTO notes (uuid, created_at, updated_at, note) VALUES (?1, ?2, ?3, ?4)",
-                &[&note.uuid, &note.created_at, &note.updated_at, &note.note],
-            )
-            .expect("Failed to insert note");
+            .prepare(&format!(
+                "
+                    SELECT id, uuid, created_at, updated_at, note
+                    FROM notes
+                    WHERE id IN ({})
+                ",
+                n_placeholders(note_ids.len())
+            ))?
+            .query_map(params_from_iter(note_ids), |row| note_from_row(row))?
+            .collect()
     }
 
-    /*fn get_note_by_id(&self, note_id: i32) -> Result<Note, DatabaseError> {
-        // Implementation for retrieving a note by its ID
-        Ok(Note::default())
+    pub fn get_note_by_uuid(&self, note_uuid: Uuid) -> Result<Note> {
+        self.connection.query_row(
+            "
+                SELECT id, uuid, created_at, updated_at, note
+                FROM notes
+                WHERE uuid = ?1
+            ",
+            [SqliteUuid(note_uuid)],
+            |row| note_from_row(row),
+        )
     }
+}
 
-    fn update_note(&self, note: &Note) -> Result<(), DatabaseError> {
-        // Implementation for updating a note in the database
-        Ok(())
-    }
+fn note_from_row(row: &rusqlite::Row) -> Result<Note> {
+    Ok(Note {
+        id: row.get(0)?,
+        uuid: row.get::<_, SqliteUuid>(1).map(|SqliteUuid(uuid)| uuid)?,
+        created_at: row.get::<_, SqliteUTC>(2).map(|SqliteUTC(dt)| dt)?,
+        updated_at: row.get::<_, SqliteUTC>(3).map(|SqliteUTC(dt)| dt)?,
+        note: row.get(4)?,
+    })
+}
 
-    fn delete_note(&self, note_id: i32) -> Result<(), DatabaseError> {
-        // Implementation for deleting a note from the database
-        Ok(())
-    }*/
+fn n_placeholders(n: usize) -> String {
+    (0..n).map(|_| "?").collect::<Vec<_>>().join(",")
 }

@@ -1,8 +1,11 @@
+use chrono::{DateTime, Utc};
+use uuid::Uuid;
+
 #[derive(Debug)]
 pub struct Note {
-    pub _id: Option<i32>,
-    pub uuid: String,
-    pub created_at: String,
-    pub updated_at: String,
+    pub id: i32,
+    pub uuid: Uuid,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
     pub note: String,
 }
