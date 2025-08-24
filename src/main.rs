@@ -5,7 +5,11 @@ use clap::Parser;
 use cli::{Cli, Commands};
 
 use crate::{
-    cli::commands::{add::add_note, edit::edit_note, find::find_notes},
+    cli::commands::{
+        add::{add_editor_note, add_note},
+        edit::edit_note,
+        find::find_notes,
+    },
     database::{connection::get_db_connection, migration::migrate, repository::NoteRepository},
 };
 
@@ -29,8 +33,6 @@ fn main() {
         Some(Commands::Remove) => {
             println!("Removing notes...");
         }
-        None => {
-            println!("Open an editor to add notes...");
-        }
+        None => add_editor_note(&note_repo),
     }
 }

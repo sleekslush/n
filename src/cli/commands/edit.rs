@@ -1,12 +1,12 @@
 use std::{
     fs::File,
-    io::{Read, Seek, SeekFrom, Write},
+    io::{Read, Write},
 };
 use tempfile::NamedTempFile;
 
 use crate::{
     cli::{EditArgs, IdOrUuid},
-    database::{models::Note, repository::NoteRepository},
+    database::repository::NoteRepository,
 };
 
 pub fn edit_note(repo: &NoteRepository, args: &EditArgs) {
@@ -16,16 +16,29 @@ pub fn edit_note(repo: &NoteRepository, args: &EditArgs) {
     };
 
     match note {
-        Ok(note) => edit_in_editor(note, repo),
+        Ok(mut note) => {
+            let original_note = note.note;
+
+            if let Some(edited_note) = edit_in_editor(Some(original_note.clone()))
+                && !edited_note.trim().is_empty()
+                && edited_note != original_note
+            {
+                note.note = edited_note;
+                repo.update_note(&note).expect("Failed to update note");
+            }
+        }
         Err(e) => println!("Failed to find note: {}", e),
     }
 }
 
-fn edit_in_editor(mut note: Note, note_repo: &NoteRepository) {
+pub fn edit_in_editor(note: Option<String>) -> Option<String> {
     let mut tmp_file = NamedTempFile::new().expect("Failed to create temp file");
-    tmp_file
-        .write_all(note.note.as_bytes())
-        .expect("Failed to write to temp file");
+
+    if let Some(ref note) = note {
+        tmp_file
+            .write_all(note.as_bytes())
+            .expect("Failed to write to temp file");
+    }
 
     let editor = std::env::var("EDITOR").unwrap_or_else(|_| "vim".to_string());
     let status = std::process::Command::new(editor)
@@ -33,7 +46,9 @@ fn edit_in_editor(mut note: Note, note_repo: &NoteRepository) {
         .status()
         .expect("Failed to open editor");
 
-    if status.success() {
+    if !status.success() {
+        note
+    } else {
         // Re-open the file from disk
         let mut file = File::open(tmp_file.path()).expect("Failed to open temp file after edit");
 
@@ -41,10 +56,6 @@ fn edit_in_editor(mut note: Note, note_repo: &NoteRepository) {
         file.read_to_string(&mut contents)
             .expect("Failed to read temp file");
 
-        // Only update if the content has changed
-        if contents != note.note {
-            note.note = contents;
-            note_repo.update_note(&note).expect("Failed to update note");
-        }
+        Some(contents)
     }
 }
