@@ -18,12 +18,7 @@ pub enum Commands {
     #[command(alias = "a", about = "Add a new note")]
     Add(AddArgs),
 
-    #[command(alias = "e", about = "Edit a note"/* group(
-        ArgGroup::new("edit_by")
-            .args(&["id", "uuid"])
-            .multiple(false)
-            .required(true)
-    )*/)]
+    #[command(alias = "e", about = "Edit a note")]
     Edit(EditArgs),
 
     #[command(alias = "f", about = "Find notes", group(
