@@ -31,6 +31,18 @@ impl<'a> NoteRepository<'a> {
         )
     }
 
+    pub fn get_note_by_id(&self, note_id: i32) -> Result<Note> {
+        self.connection.query_row(
+            "
+                SELECT id, uuid, created_at, updated_at, note
+                FROM notes
+                WHERE id = ?1
+            ",
+            [note_id],
+            |row| note_from_row(row),
+        )
+    }
+
     pub fn get_notes_by_ids(&self, note_ids: &[i32]) -> Result<Vec<Note>> {
         if note_ids.is_empty() {
             return Ok(vec![]);
@@ -60,14 +72,66 @@ impl<'a> NoteRepository<'a> {
             |row| note_from_row(row),
         )
     }
+
+    /*pub fn get_notes_by_uuids(&self, note_uuids: &[Uuid]) -> Result<Vec<Note>> {
+        if note_uuids.is_empty() {
+            return Ok(vec![]);
+        }
+
+        let sql_uuids: Vec<SqliteUuid> = note_uuids.iter().cloned().map(SqliteUuid).collect();
+
+        self.connection
+            .prepare(&format!(
+                "
+                    SELECT id, uuid, created_at, updated_at, note
+                    FROM notes
+                    WHERE uuid IN ({})
+                ",
+                n_placeholders(sql_uuids.len())
+            ))?
+            .query_map(params_from_iter(sql_uuids), |row| note_from_row(row))?
+            .collect()
+    }
+
+    pub fn get_latest_note(&self) -> Result<Note> {
+        self.connection.query_one(
+            "
+                SELECT id, uuid, created_at, updated_at, note
+                FROM notes
+                ORDER BY created_at DESC
+                LIMIT 1
+            ",
+            [],
+            |row| note_from_row(row),
+        )
+    }
+
+    pub fn get_last_updated_note(&self) -> Result<Note> {
+        self.connection.query_one(
+            "
+                SELECT id, uuid, created_at, updated_at, note
+                FROM notes
+                ORDER BY updated_at DESC
+                LIMIT 1
+            ",
+            [],
+            |row| note_from_row(row),
+        )
+    }*/
 }
 
 fn note_from_row(row: &rusqlite::Row) -> Result<Note> {
     Ok(Note {
-        id: row.get(0)?,
-        uuid: row.get::<_, SqliteUuid>(1).map(|SqliteUuid(uuid)| uuid)?,
-        created_at: row.get::<_, SqliteUTC>(2).map(|SqliteUTC(dt)| dt)?,
-        updated_at: row.get::<_, SqliteUTC>(3).map(|SqliteUTC(dt)| dt)?,
+        id: row.get("id")?,
+        uuid: row
+            .get::<_, SqliteUuid>("uuid")
+            .map(|SqliteUuid(uuid)| uuid)?,
+        created_at: row
+            .get::<_, SqliteUTC>("created_at")
+            .map(|SqliteUTC(dt)| dt)?,
+        updated_at: row
+            .get::<_, SqliteUTC>("updated_at")
+            .map(|SqliteUTC(dt)| dt)?,
         note: row.get(4)?,
     })
 }

@@ -6,10 +6,7 @@ pub fn add_note(repo: &NoteRepository, args: &AddArgs) {
     }
 
     match repo.create_note(args.note.clone()) {
-        Ok(note) => println!(
-            "Adding note\n\tid: {}\n\tuuid: {}\n\tcreated_at: {}\n\tupdated_at: {}\n\tnote: {}",
-            note.id, note.uuid, note.created_at, note.updated_at, note.note
-        ),
+        Ok(note) => println!("{}", note.uuid),
         Err(e) => panic!("Failed to add note: {}", e),
     };
 }

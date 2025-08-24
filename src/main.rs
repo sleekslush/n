@@ -5,7 +5,7 @@ use clap::Parser;
 use cli::{Cli, Commands};
 
 use crate::{
-    cli::commands::{add::add_note, find::find_notes},
+    cli::commands::{add::add_note, edit::edit_note, find::find_notes},
     database::{connection::get_db_connection, migration::migrate, repository::NoteRepository},
 };
 
@@ -24,9 +24,7 @@ fn main() {
     // matches just as you would the top level cmd
     match &cli.command {
         Some(Commands::Add(args)) => add_note(&note_repo, args),
-        Some(Commands::Edit) => {
-            println!("Editing notes...");
-        }
+        Some(Commands::Edit(args)) => edit_note(&note_repo, args),
         Some(Commands::Find(args)) => find_notes(&note_repo, args),
         Some(Commands::Remove) => {
             println!("Removing notes...");
