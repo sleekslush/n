@@ -11,8 +11,9 @@ use crate::{
 
 pub fn edit_note(repo: &NoteRepository, args: &EditArgs) {
     let note = match args.id {
-        IdOrUuid::Id(id) => repo.get_note_by_id(id),
-        IdOrUuid::Uuid(uuid) => repo.get_note_by_uuid(uuid),
+        Some(IdOrUuid::Id(id)) => repo.get_note_by_id(id),
+        Some(IdOrUuid::Uuid(uuid)) => repo.get_note_by_uuid(uuid),
+        None => repo.get_last_updated_note(),
     };
 
     match note {

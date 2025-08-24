@@ -108,13 +108,27 @@ impl<'a> NoteRepository<'a> {
             .collect()
     }
 
-    pub fn get_latest_notes(&self, limit: usize) -> Result<Vec<Note>> {
+    /*pub fn get_newest_notes(&self, limit: usize) -> Result<Vec<Note>> {
         self.connection
             .prepare(
                 "
                 SELECT id, uuid, created_at, updated_at, note
                 FROM notes
                 ORDER BY created_at DESC
+                LIMIT ?1
+            ",
+            )?
+            .query_map([limit as i64], |row| note_from_row(row))?
+            .collect()
+    }*/
+
+    pub fn get_latest_notes(&self, limit: usize) -> Result<Vec<Note>> {
+        self.connection
+            .prepare(
+                "
+                SELECT id, uuid, created_at, updated_at, note
+                FROM notes
+                ORDER BY updated_at DESC
                 LIMIT ?1
             ",
             )?
@@ -133,7 +147,7 @@ impl<'a> NoteRepository<'a> {
             [],
             |row| note_from_row(row),
         )
-    }
+    }*/
 
     pub fn get_last_updated_note(&self) -> Result<Note> {
         self.connection.query_one(
@@ -146,7 +160,7 @@ impl<'a> NoteRepository<'a> {
             [],
             |row| note_from_row(row),
         )
-    }*/
+    }
 }
 
 fn note_from_row(row: &rusqlite::Row) -> Result<Note> {

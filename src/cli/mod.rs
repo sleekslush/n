@@ -63,7 +63,7 @@ impl std::str::FromStr for IdOrUuid {
 #[derive(Parser)]
 pub struct EditArgs {
     #[arg(help = "The id or UUID of the note to edit")]
-    id: IdOrUuid,
+    id: Option<IdOrUuid>,
 }
 
 #[derive(Parser)]
