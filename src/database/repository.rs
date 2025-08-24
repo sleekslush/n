@@ -31,6 +31,21 @@ impl<'a> NoteRepository<'a> {
         )
     }
 
+    pub fn update_note(&self, note: &Note) -> Result<Note> {
+        let now = SqliteUTC(Utc::now());
+
+        self.connection.query_row(
+            "
+                UPDATE notes
+                SET updated_at = ?1, note = ?2
+                WHERE id = ?3
+                RETURNING id, uuid, created_at, updated_at, note
+            ",
+            params![now, note.note, note.id],
+            |row| note_from_row(row),
+        )
+    }
+
     pub fn get_note_by_id(&self, note_id: i32) -> Result<Note> {
         self.connection.query_row(
             "
