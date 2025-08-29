@@ -4,14 +4,19 @@ use crate::{
 };
 
 pub fn add_note(repo: &NoteRepository, args: &AddArgs) {
-    if args.note.trim().is_empty() {
-        panic!("Note cannot be empty");
-    }
+    if let Some(note_text) = &args.note {
+        let note = note_text.join(" ");
+        if note.trim().is_empty() {
+            panic!("Note cannot be empty");
+        }
 
-    match repo.create_note(args.note.clone()) {
-        Ok(note) => println!("{}", note.uuid),
-        Err(e) => panic!("Failed to add note: {}", e),
-    };
+        match repo.create_note(note.clone()) {
+            Ok(note) => println!("{}", note.uuid),
+            Err(e) => panic!("Failed to add note: {}", e),
+        };
+    } else {
+        add_editor_note(repo)
+    }
 }
 
 pub fn add_editor_note(repo: &NoteRepository) {

@@ -20,6 +20,7 @@ pub fn edit_note(repo: &NoteRepository, args: &EditArgs) {
         Ok(mut note) => {
             let original_note = note.note;
 
+            // Open in the editor and only save if changes were made
             if let Some(edited_note) = edit_in_editor(Some(original_note.clone()))
                 && !edited_note.trim().is_empty()
                 && edited_note != original_note

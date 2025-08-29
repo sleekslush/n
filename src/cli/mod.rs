@@ -1,6 +1,6 @@
 pub mod commands;
 
-use clap::{ArgGroup, Parser, Subcommand};
+use clap::{ArgGroup, Parser, Subcommand, ValueEnum};
 use uuid::Uuid;
 
 #[derive(Parser)]
@@ -10,7 +10,7 @@ pub struct Cli {
     pub path: Option<String>,
 
     #[command(subcommand)]
-    pub command: Option<Commands>,
+    pub command: Commands,
 }
 
 #[derive(Subcommand)]
@@ -30,14 +30,12 @@ pub enum Commands {
 
     #[command(alias = "r", alias = "rm", about = "Remove note(s)")]
     Remove,
-    //#[command(about = "View a note")]
-    //View(ViewArgs),
 }
 
 #[derive(Parser)]
 pub struct AddArgs {
     #[arg(trailing_var_arg = true, num_args = 1.., help = "The note text")]
-    note: String,
+    note: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -66,6 +64,19 @@ pub struct EditArgs {
     id: Option<IdOrUuid>,
 }
 
+#[derive(ValueEnum, Clone, Debug)]
+enum OutputField {
+    Id,
+    Uuid,
+    Note,
+}
+
+#[derive(ValueEnum, Clone, Debug)]
+pub enum OutputFormat {
+    Json,
+    Text,
+}
+
 #[derive(Parser)]
 pub struct FindArgs {
     #[arg(long, value_delimiter = ',', help = "Find by id")]
@@ -79,6 +90,17 @@ pub struct FindArgs {
 
     #[arg(long, help = "Keywords to search for")]
     kw: Option<String>,
+
+    #[arg(
+        long,
+        value_delimiter = ',',
+        default_value = "uuid,note",
+        help = "Fields to return"
+    )]
+    fields: Option<Vec<OutputField>>,
+
+    #[arg(long, help = "Output format", default_value = "text")]
+    format: OutputFormat,
 }
 
 #[derive(Parser)]

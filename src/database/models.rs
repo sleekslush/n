@@ -1,7 +1,8 @@
 use chrono::{DateTime, Utc};
+use serde::Serialize;
 use uuid::Uuid;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct Note {
     pub id: i32,
     pub uuid: Uuid,

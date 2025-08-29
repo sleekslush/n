@@ -1,5 +1,6 @@
 mod cli;
 mod database;
+mod format;
 
 use clap::Parser;
 use cli::{Cli, Commands};
@@ -27,12 +28,11 @@ fn main() {
     // You can check for the existence of subcommands, and if found use their
     // matches just as you would the top level cmd
     match &cli.command {
-        Some(Commands::Add(args)) => add_note(&note_repo, args),
-        Some(Commands::Edit(args)) => edit_note(&note_repo, args),
-        Some(Commands::Find(args)) => find_notes(&note_repo, args),
-        Some(Commands::Remove) => {
+        Commands::Add(args) => add_note(&note_repo, args),
+        Commands::Edit(args) => edit_note(&note_repo, args),
+        Commands::Find(args) => find_notes(&note_repo, args),
+        Commands::Remove => {
             println!("Removing notes...");
         }
-        None => add_editor_note(&note_repo),
     }
 }

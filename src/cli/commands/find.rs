@@ -1,3 +1,6 @@
+use crate::cli::OutputFormat::{self, Json, Text};
+use crate::format::traits::OutputFormatter;
+use crate::format::{json::JsonFormatter, text::TextFormatter};
 use crate::{cli::FindArgs, database::repository::NoteRepository};
 
 pub fn find_notes(repo: &NoteRepository, args: &FindArgs) {
@@ -18,9 +21,17 @@ pub fn find_notes(repo: &NoteRepository, args: &FindArgs) {
     match notes {
         Ok(notes) => {
             for note in notes {
-                println!("{:?}", note);
+                let formatter = get_note_formatter(&args.format);
+                println!("{}", formatter.format(&note));
             }
         }
         Err(e) => println!("Failed to find notes: {}", e),
+    }
+}
+
+fn get_note_formatter(format: &OutputFormat) -> Box<dyn OutputFormatter> {
+    match format {
+        Json => Box::new(JsonFormatter),
+        Text => Box::new(TextFormatter),
     }
 }
