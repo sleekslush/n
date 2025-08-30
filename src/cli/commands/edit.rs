@@ -25,7 +25,7 @@ pub fn edit_note(repo: &NoteRepository, args: &EditArgs) {
                 repo.update_note(&note).expect("Failed to update note");
             }
         }
-        Err(e) => println!("Failed to find note: {}", e),
+        Err(_) => eprintln!("No recent note to edit"),
     }
 }
 

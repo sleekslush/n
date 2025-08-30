@@ -23,7 +23,7 @@ pub fn find_notes(repo: &NoteRepository, args: &FindArgs) {
                 println!("{}", formatter.format(&note));
             }
         }
-        Err(e) => println!("Failed to find notes: {}", e),
+        Err(e) => panic!("Failed to find notes: {}", e),
     }
 }
 
