@@ -4,15 +4,11 @@ use std::{
 };
 use tempfile::NamedTempFile;
 
-use crate::{
-    cli::{EditArgs, IdOrUuid},
-    database::repository::NoteRepository,
-};
+use crate::{cli::EditArgs, database::repository::NoteRepository};
 
 pub fn edit_note(repo: &NoteRepository, args: &EditArgs) {
-    let note = match args.id {
-        Some(IdOrUuid::Id(id)) => repo.get_note_by_id(id),
-        Some(IdOrUuid::Uuid(uuid)) => repo.get_note_by_uuid(uuid),
+    let note = match args.uuid {
+        Some(uuid) => repo.get_note_by_uuid(uuid),
         None => repo.get_last_updated_note(),
     };
 

@@ -23,13 +23,13 @@ pub enum Commands {
 
     #[command(alias = "f", about = "Find notes", group(
         ArgGroup::new("find_by")
-            .args(&["ids", "uuids", "re", "kw"])
+            .args(&["uuid", "re", "kw"])
             .multiple(false)
     ))]
     Find(FindArgs),
 
     #[command(alias = "r", alias = "rm", about = "Remove note(s)")]
-    Remove,
+    Remove(RemoveArgs),
 }
 
 #[derive(Parser)]
@@ -38,35 +38,14 @@ pub struct AddArgs {
     note: Option<Vec<String>>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-enum IdOrUuid {
-    Id(i32),
-    Uuid(Uuid),
-}
-
-impl std::str::FromStr for IdOrUuid {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if let Ok(i) = s.parse::<i32>() {
-            Ok(IdOrUuid::Id(i))
-        } else if let Ok(u) = s.parse::<Uuid>() {
-            Ok(IdOrUuid::Uuid(u))
-        } else {
-            Err(format!("`{s}` is neither an integer nor a UUID"))
-        }
-    }
-}
-
 #[derive(Parser)]
 pub struct EditArgs {
-    #[arg(help = "The id or UUID of the note to edit")]
-    id: Option<IdOrUuid>,
+    #[arg(help = "The UUID of the note to edit")]
+    uuid: Option<Uuid>,
 }
 
 #[derive(ValueEnum, Clone, Debug)]
 enum OutputField {
-    Id,
     Uuid,
     Note,
 }
@@ -79,11 +58,8 @@ pub enum OutputFormat {
 
 #[derive(Parser)]
 pub struct FindArgs {
-    #[arg(long, value_delimiter = ',', help = "Find by id")]
-    ids: Option<Vec<i32>>,
-
-    #[arg(long, value_delimiter = ',', help = "Find by uuid")]
-    uuids: Option<Vec<Uuid>>,
+    #[arg(long, value_delimiter = ',', help = "Find by id or uuid")]
+    uuid: Option<Vec<Uuid>>,
 
     #[arg(long, help = "Regular expression to search for")]
     re: Option<String>,
@@ -104,4 +80,7 @@ pub struct FindArgs {
 }
 
 #[derive(Parser)]
-pub struct ViewArgs {}
+pub struct RemoveArgs {
+    #[arg(required = true, num_args = 1.., trailing_var_arg = true, help = "UUIDs to remove")]
+    uuid: Vec<Uuid>,
+}

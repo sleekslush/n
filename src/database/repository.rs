@@ -22,64 +22,35 @@ impl<'a> NoteRepository<'a> {
 
         self.connection.query_row(
             "
-                    INSERT INTO notes (uuid, created_at, updated_at, note)
-                    VALUES (?1, ?2, ?3, ?4)
-                    RETURNING id, uuid, created_at, updated_at, note
-                ",
-            params![uuid, now, now, note],
+                INSERT INTO notes (uuid, created_at, updated_at, note)
+                VALUES (?1, ?2, ?2, ?3)
+                RETURNING *
+            ",
+            params![uuid, now, note],
             |row| note_from_row(row),
         )
     }
 
     pub fn update_note(&self, note: &Note) -> Result<Note> {
+        let uuid = SqliteUuid(note.uuid);
         let now = SqliteUTC(Utc::now());
 
         self.connection.query_row(
             "
                 UPDATE notes
                 SET updated_at = ?1, note = ?2
-                WHERE id = ?3
-                RETURNING id, uuid, created_at, updated_at, note
+                WHERE uuid = ?3
+                RETURNING *
             ",
-            params![now, note.note, note.id],
+            params![now, note.note, uuid],
             |row| note_from_row(row),
         )
-    }
-
-    pub fn get_note_by_id(&self, id: i32) -> Result<Note> {
-        self.connection.query_one(
-            "
-                SELECT id, uuid, created_at, updated_at, note
-                FROM notes
-                WHERE id = ?1
-            ",
-            [id],
-            |row| note_from_row(row),
-        )
-    }
-
-    pub fn get_notes_by_ids(&self, ids: &[i32]) -> Result<Vec<Note>> {
-        if ids.is_empty() {
-            return Ok(vec![]);
-        }
-
-        self.connection
-            .prepare(&format!(
-                "
-                    SELECT id, uuid, created_at, updated_at, note
-                    FROM notes
-                    WHERE id IN ({})
-                ",
-                n_placeholders(ids.len())
-            ))?
-            .query_map(params_from_iter(ids), |row| note_from_row(row))?
-            .collect()
     }
 
     pub fn get_note_by_uuid(&self, uuid: Uuid) -> Result<Note> {
         self.connection.query_row(
             "
-                SELECT id, uuid, created_at, updated_at, note
+                SELECT *
                 FROM notes
                 WHERE uuid = ?1
             ",
@@ -88,17 +59,17 @@ impl<'a> NoteRepository<'a> {
         )
     }
 
-    pub fn get_notes_by_uuids(&self, note_uuids: &[Uuid]) -> Result<Vec<Note>> {
-        if note_uuids.is_empty() {
+    pub fn get_notes_by_uuids(&self, uuids: &[Uuid]) -> Result<Vec<Note>> {
+        if uuids.is_empty() {
             return Ok(vec![]);
         }
 
-        let sql_uuids: Vec<SqliteUuid> = note_uuids.iter().cloned().map(SqliteUuid).collect();
+        let sql_uuids: Vec<SqliteUuid> = uuids.iter().cloned().map(SqliteUuid).collect();
 
         self.connection
             .prepare(&format!(
                 "
-                    SELECT id, uuid, created_at, updated_at, note
+                    SELECT *
                     FROM notes
                     WHERE uuid IN ({})
                 ",
@@ -108,25 +79,11 @@ impl<'a> NoteRepository<'a> {
             .collect()
     }
 
-    /*pub fn get_newest_notes(&self, limit: usize) -> Result<Vec<Note>> {
-        self.connection
-            .prepare(
-                "
-                SELECT id, uuid, created_at, updated_at, note
-                FROM notes
-                ORDER BY created_at DESC
-                LIMIT ?1
-            ",
-            )?
-            .query_map([limit as i64], |row| note_from_row(row))?
-            .collect()
-    }*/
-
     pub fn get_latest_notes(&self, limit: usize) -> Result<Vec<Note>> {
         self.connection
             .prepare(
                 "
-                SELECT id, uuid, created_at, updated_at, note
+                SELECT *
                 FROM notes
                 ORDER BY updated_at DESC
                 LIMIT ?1
@@ -136,23 +93,10 @@ impl<'a> NoteRepository<'a> {
             .collect()
     }
 
-    /*pub fn get_latest_note(&self) -> Result<Note> {
-        self.connection.query_one(
-            "
-                SELECT id, uuid, created_at, updated_at, note
-                FROM notes
-                ORDER BY created_at DESC
-                LIMIT 1
-            ",
-            [],
-            |row| note_from_row(row),
-        )
-    }*/
-
     pub fn get_last_updated_note(&self) -> Result<Note> {
         self.connection.query_one(
             "
-                SELECT id, uuid, created_at, updated_at, note
+                SELECT *
                 FROM notes
                 ORDER BY updated_at DESC
                 LIMIT 1
@@ -160,12 +104,30 @@ impl<'a> NoteRepository<'a> {
             [],
             |row| note_from_row(row),
         )
+    }
+
+    pub fn delete_notes(&self, uuids: &[Uuid]) -> Result<Vec<Uuid>> {
+        let sql_uuids: Vec<SqliteUuid> = uuids.iter().cloned().map(SqliteUuid).collect();
+
+        self.connection
+            .prepare(&format!(
+                "
+                DELETE FROM notes
+                WHERE uuid IN ({})
+                RETURNING uuid
+            ",
+                n_placeholders(uuids.len())
+            ))?
+            .query_map(params_from_iter(sql_uuids), |row| {
+                row.get::<_, SqliteUuid>("uuid")
+                    .map(|SqliteUuid(uuid)| uuid)
+            })?
+            .collect()
     }
 }
 
 fn note_from_row(row: &rusqlite::Row) -> Result<Note> {
     Ok(Note {
-        id: row.get("id")?,
         uuid: row
             .get::<_, SqliteUuid>("uuid")
             .map(|SqliteUuid(uuid)| uuid)?,
@@ -175,7 +137,7 @@ fn note_from_row(row: &rusqlite::Row) -> Result<Note> {
         updated_at: row
             .get::<_, SqliteUTC>("updated_at")
             .map(|SqliteUTC(dt)| dt)?,
-        note: row.get(4)?,
+        note: row.get("note")?,
     })
 }
 
